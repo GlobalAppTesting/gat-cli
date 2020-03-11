@@ -1,0 +1,9 @@
+[flake8]
+max-line-length=120
+statistics=True
+inline-quotes=double
+import-order-style=smarkets
+extend-ignore=ANN101
+suppress-none-returning=True
+per-file-ignores=
+	gat/__init__.py:F401

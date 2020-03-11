@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "gat-api-cli"
+version = "0.2.0"
+description = "Global App Testing Public API CLI"
+license = "BSD-3-Clause"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+click = "^7.0"
+requests = "^2.22.0"
+tabulate = "^0.8.6"
+
+[tool.poetry.dev-dependencies]
+black = "^19.10b0"
+flake8 = "^3.7.9"
+flake8-annotations = "^2.0.0"
+flake8-quotes = "^2.1.1"
+flake8-type-annotations = "^0.1.0"
+isort = "^4.3.21"
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
+multi_line_output = 3
+order_by_type = "False"
+include_trailing_comma = "True"
