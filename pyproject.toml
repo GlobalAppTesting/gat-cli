@@ -3,6 +3,7 @@ name = "gat-api-cli"
 version = "0.2.0"
 description = "Global App Testing Public API CLI"
 license = "BSD-3-Clause"
+authors = []
 
 [tool.poetry.dependencies]
 python = "^3.7"
