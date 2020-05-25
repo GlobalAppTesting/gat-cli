@@ -3,7 +3,7 @@
 import dataclasses
 import datetime
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import requests
 
@@ -86,7 +86,7 @@ class TestCaseRunsBatchState:
 
 
 @dataclasses.dataclass(frozen=True)
-class TestCaseRun:
+class TestCaseRunsBatchTestCaseRun:
     type: str = dataclasses.field(init=False, default="testCaseRun")
     id: str
     name: str
@@ -107,7 +107,7 @@ class TestCaseRunsBatchSummary:
     testers_involved: int
     application_id: str
     environment_id: str
-    test_case_runs: List[TestCaseRun]
+    test_case_runs: List[TestCaseRunsBatchTestCaseRun]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -125,10 +125,50 @@ class TestCaseInstruction:
 
 
 @dataclasses.dataclass(frozen=True)
+class EmbeddedTestCase:
+    type: str = dataclasses.field(init=False, default="testCase")
+    id: str
+
+
+@dataclasses.dataclass(frozen=True)
 class TestCase:
     type: str = dataclasses.field(init=False, default="testCase")
     id: str
     title: str
     importance: Optional[str]
     section: Optional[str]
-    instructions: List[TestCaseInstruction]
+    instructions: List[Union[TestCaseInstruction, EmbeddedTestCase]]
+
+
+@dataclasses.dataclass(frozen=True)
+class Country:
+    type: str = dataclasses.field(init=False, default="country")
+    id: str
+    name: str
+    code: str
+    available_platforms: List[str]
+
+
+@dataclasses.dataclass(frozen=True)
+class TestCaseRun:
+    type: str = dataclasses.field(init=False, default="testCaseRun")
+    id: str
+    test_case_name: str
+    test_case_section: str
+    test_case_importance: str
+    ada_url: str
+    variations: List["TestCaseRun.Variation"]
+
+    @dataclasses.dataclass(frozen=True)
+    class Variation:
+        name: str
+        results: List["TestCaseRun.Variation.TestCaseRunResult"]
+
+        @dataclasses.dataclass(frozen=True)
+        class TestCaseRunResult:
+            outcome: str
+            attachment_url: str
+            tester_comment: str
+            steps_to_reproduce: List[str]
+            reported_at: datetime.datetime
+            country: str

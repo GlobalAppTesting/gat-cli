@@ -3,6 +3,7 @@
 from .client import GatApi, GatError
 from .data import (
     Application,
+    EmbeddedTestCase,
     Environment,
     GatApiConfiguration,
     InternetBrowser,
@@ -15,4 +16,5 @@ from .data import (
     TestCaseRunsBatch,
     TestCaseRunsBatchState,
     TestCaseRunsBatchSummary,
+    TestCaseRunsBatchTestCaseRun,
 )

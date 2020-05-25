@@ -90,6 +90,39 @@ def create_environment(context: click.Context, application_id: str, name: str, u
 
 @cli.command()
 @click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option("-e", "--environment", "environment_id", required=True, help="Environment ID.")
+@click.pass_context
+def delete_environment(context: click.Context, application_id: str, environment_id: str) -> None:
+    """
+    Delete given environment from the given application.
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    environment = api.environment_by_id(application, environment_id)
+    api.delete_environment(application, environment)
+    click.echo(f"Environment {environment.name} deleted for application {application.name}")
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option("-e", "--environment", "environment_id", required=True, help="Environment ID.")
+@click.argument("name")
+@click.argument("url")
+@click.pass_context
+def update_environment(context: click.Context, application_id: str, environment_id: str, name: str, url: str) -> None:
+    """
+    Update given environment with new name and URL.
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    environment = api.environment_by_id(application, environment_id)
+    updated_environment = api.update_environment(application, environment, name, url)
+    table = [["ID", "Name", "URL"], [updated_environment.id, updated_environment.name, updated_environment.url]]
+    click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
 @click.pass_context
 def list_native_builds(context: click.Context, application_id: str) -> None:
     """
@@ -104,6 +137,85 @@ def list_native_builds(context: click.Context, application_id: str) -> None:
             for build in api.native_builds(application)
         ]
     )
+    click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.argument("name")
+@click.argument("build")
+@click.pass_context
+def create_native_build(context: click.Context, application_id: str, name: str, build: str) -> None:
+    """
+    Create a new native build for the given application.
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    new_build = api.create_native_build(application, name, build)
+
+    table = [
+        ["ID", "Name", "Original file name", "External vendor URL", "Signing status"],
+        [
+            new_build.id,
+            new_build.name,
+            new_build.original_file_name,
+            new_build.external_vendor_url,
+            new_build.signing_status,
+        ],
+    ]
+
+    click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option(
+    "-b", "--build", "native_build_id", required=True, help="Native build ID to delete.",
+)
+@click.pass_context
+def delete_native_build(context: click.Context, application_id: str, native_build_id: str) -> None:
+    """
+    Delete native build
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    native_build = api.native_build_by_id(application, native_build_id)
+
+    api.delete_native_build(application, native_build_id)
+    click.echo(f"Native build {native_build.name} deleted for application {application.name}")
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option(
+    "-b", "--build", "id", required=True, help="Native build ID to update.",
+)
+@click.option(
+    "-n", "--name", "name", required=True, help="New native build name.",
+)
+@click.pass_context
+def update_native_build(context: click.Context, application_id: str, id: str, name: str) -> None:
+    """
+    Update given build with new name
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    native_build = api.native_build_by_id(application, id)
+    updated_build = api.update_native_build(application, native_build, name)
+
+    table = [["ID", "Name", "Original file name", "External vendor URL", "Signing status"]]
+    table.extend(
+        [
+            [
+                updated_build.id,
+                updated_build.name,
+                updated_build.original_file_name,
+                updated_build.external_vendor_url,
+                updated_build.signing_status,
+            ]
+        ]
+    )
+
     click.echo(tabulate.tabulate(table, headers="firstrow"))
 
 
@@ -281,6 +393,28 @@ def delete_test_cases(context: click.Context, application_id: str) -> None:
 @cli.command()
 @click.option("-a", "--application", "application_id", required=True, help="Application ID.")
 @click.option(
+    "-t",
+    "--test-case",
+    "test_case_ids",
+    required=True,
+    multiple=True,
+    help="Test case ID to delete (can be used multiple times).",
+)
+@click.pass_context
+def delete_test_cases_by_id(context: click.Context, application_id: str, test_case_ids: List[str]) -> None:
+    """
+    Delete given test cases from the given application
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+
+    api.delete_test_cases(application, test_case_ids)
+    click.echo(f"Test cases with given ids were deleted: {' '.join(test_case_ids)}")
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option(
     "-i",
     "--importance",
     "importance",
@@ -304,12 +438,16 @@ def create_test_case(
     Create new test case with instructions.
 
     Each instruction ending with a question mark will be treated as an assertion.
+
+    Each instruction with following pattern: "embedded_id={test_case_id}" will create an embedded relation.
     """
     api = context.obj
     application = api.application_by_id(application_id)
 
     instructions = [
-        gat.TestCaseInstruction(id="new", content=instruction_text, assertion=instruction_text.endswith("?"))
+        gat.EmbeddedTestCase(id=instruction_text.replace("embedded_id=", ""))
+        if instruction_text.startswith("embedded_id=")
+        else gat.TestCaseInstruction(id="new", content=instruction_text, assertion=instruction_text.endswith("?"))
         for instruction_text in instruction
     ]
     test_case = gat.TestCase(id="new", title=title, importance=importance, section=section, instructions=instructions)
@@ -320,6 +458,115 @@ def create_test_case(
         [created_test_case.id, created_test_case.title, created_test_case.importance, created_test_case.section],
     ]
     click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+@cli.command()
+@click.pass_context
+def list_countries(context: click.Context) -> None:
+    """
+    List countries available for localized tests.
+    """
+    api = context.obj
+    table = [["ID", "Name", "Code", "Available platforms"]]
+    table.extend(
+        [
+            [country.id, country.name, country.code, ", ".join(country.available_platforms)]
+            for country in api.countries()
+        ]
+    )
+    click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+@cli.command()
+@click.option("-a", "--application", "application_id", required=True, help="Application ID.")
+@click.option("-b", "--batch", "batch_id", required=True, help="Application ID.")
+@click.option("-r", "--test-case-runs", "test_case_run_ids", multiple=True, required=False, help="Test case runs ids.")
+@click.option(
+    "-o",
+    "--outcome",
+    "outcome",
+    required=False,
+    type=click.Choice(["passed", "failed"], case_sensitive=False),
+    help="Outcome of the tests",
+)
+@click.option(
+    "-i",
+    "--importance",
+    "importance",
+    required=False,
+    type=click.Choice(["Low", "Medium", "Critical"], case_sensitive=True),
+    help="Importance of the test cases executed by tests",
+)
+@click.pass_context
+def list_test_case_runs(
+    context: click.Context,
+    application_id: str,
+    batch_id: str,
+    test_case_run_ids: Optional[List[str]],
+    outcome: Optional[str],
+    importance: Optional[str],
+) -> None:
+    """
+    Show a list of test case runs for a given test case batch
+    """
+    api = context.obj
+    application = api.application_by_id(application_id)
+    test_case_runs = api.test_case_runs(
+        application, batch_id=batch_id, test_case_run_ids=test_case_run_ids, outcome=outcome, importance=importance
+    )
+
+    table = [
+        [
+            "ID",
+            "Test case name",
+            "Test case section",
+            "Test case importance",
+            "Variation name",
+            "Result outcome",
+            "Reported at",
+            "Country",
+        ]
+    ]
+
+    test_case_runs_rows = []
+
+    for test_case_run in test_case_runs:
+        first_variation = test_case_run.variations[0]
+        first_result = first_variation.results[0]
+        test_case_runs_rows.append(
+            [
+                test_case_run.id,
+                test_case_run.test_case_name,
+                test_case_run.test_case_section,
+                test_case_run.test_case_importance,
+                first_variation.name,
+                first_result.outcome,
+                first_result.reported_at,
+                first_result.country,
+            ]
+        )
+
+        for result in first_variation.results[1:]:
+            test_case_runs_rows.append(get_result_row(result))
+
+        for variation in test_case_run.variations[1:]:
+            first_result = variation.results[0]
+            test_case_runs_rows.append(
+                ["", "", "", "", variation.name, first_result.outcome, first_result.reported_at, first_result.country]
+            )
+
+            for result in variation.results[1:]:
+                test_case_runs_rows.append(get_result_row(result))
+
+    table.extend(test_case_runs_rows)
+    click.echo(tabulate.tabulate(table, headers="firstrow"))
+
+
+def get_result_row(result: gat.TestCaseRun.Variation.TestCaseRunResult) -> List[str]:
+    row = [""] * 5
+    row.extend([result.outcome, result.reported_at, result.country])
+
+    return row
 
 
 if __name__ == "__main__":
